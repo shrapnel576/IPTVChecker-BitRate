@@ -72,7 +72,7 @@ python IPTV_checker.py /path/to/your/playlist.m3u8
 
 2. **Check a Specific Group**:
    ```bash
-   python IPTV_checker.py /path/to/your/playlist.m3u8 -group "SPORT HD"
+   python IPTV_checker.py https://myserver/get.php?username=myuser&password=mypass&type=m3u_plus -group "SPORT HD"
    ```
 
 3. **Check with Extended Timeout**:

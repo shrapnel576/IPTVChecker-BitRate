@@ -503,11 +503,32 @@ def handle_split(base_playlist_name, working_channels, dead_channels):
 def get_channel_name(line):
     return line.rsplit(',', 1)[1].strip() if ',' in line else "Unknown Channel"
 
+
+def pull_m3u_playlist(m3u_url):
+    logging.info(f"Pulling playlist from {m3u_url}")    
+    try:
+        headers = {
+        'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:140.0) Gecko/20100101 Firefox/140.0' ,
+        'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' ,
+        'Accept-Language':'en-US,en;q=0.5' ,
+        'Accept-Encoding':'gzip, deflate, br, zstd'}
+  
+        with requests.get(m3u_url, headers=headers) as response:
+            if response.status_code == 200:
+                with open("playlist.txt", mode="w") as f:
+                    f.write(response.text)
+                    return "playlist.txt"  
+            else:
+                logging.error(f"An unexpected error occurred while fetching the playlist, status code {response.status_code}")            
+    except Exception as e:
+        logging.error(f"An unexpected error occurred while fetching the playlist: {str(e)}")        
+    return None        
+
 def main():
     print_header()
 
     parser = argparse.ArgumentParser(description="Check the status of channels in an IPTV M3U8 playlist and capture frames of live channels.")
-    parser.add_argument("playlist", type=str, help="Path to the M3U8 playlist file or folder (in which case all playlists in the folder will be processed)")
+    parser.add_argument("playlist", type=str, help="Path to the M3U8 playlist url, local file or local folder (in which case all playlists in the folder will be processed)")
     parser.add_argument("-group", "-g", type=str, default=None, help="Specific group title to check within the playlist")
     parser.add_argument("-channel_search", "-c", type=str, default=None, help="Specific search term to match channel names. Case Unsensitive.")
     parser.add_argument("-output", "-o", type=str, default=None, help="Output file path e.g. ~/output/results.csv")
@@ -530,7 +551,13 @@ def main():
         logging.basicConfig(level=logging.CRITICAL)  # Only critical errors will be logged by default.
 
     playlists = []
-    if str(args.playlist).lower().endswith("m3u") or str(args.playlist).lower().endswith("m3u8"):
+    playlist = None
+    if str(args.playlist).lower().startswith("http"):
+        playlist = pull_m3u_playlist(args.playlist)    
+        if playlist is None:
+            return
+        playlists.append(playlist)    
+    elif str(args.playlist).lower().endswith("m3u") or str(args.playlist).lower().endswith("m3u8"):
         playlists.append(args.playlist)
     else:
         for f in os.listdir(args.playlist):
@@ -541,6 +568,9 @@ def main():
 
     parse_m3u8_file(playlists, args.group, args.timeout, extended_timeout=args.extended, split=args.split, rename=args.rename, skip_screenshots=args.skip_screenshots, output_file=args.output, channel_search=args.channel_search)
 
+    if playlist:
+        os.remove(playlist)
+        
 if __name__ == "__main__":
     main()
 
